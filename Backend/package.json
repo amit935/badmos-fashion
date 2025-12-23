@@ -1,0 +1,36 @@
+{
+  "name": "badmos-fashion",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "ts-node ./src/index.ts",
+    "dev:worker": "ts-node ./src/index-worker.ts",
+    "dev": "concurrently npm:dev:*",
+    "build": "tsc",
+    "start:server": "node ./dist/index.js",
+    "start:worker": "node ./dist/index-worker.js",
+    "start": "concurrently npm:start:*"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.888.0",
+    "@aws-sdk/credential-providers": "^3.888.0",
+    "@aws-sdk/lib-storage": "^3.888.0",
+    "@pinelab/vendure-plugin-modify-customer-orders": "^1.6.2",
+    "@vendure/admin-ui-plugin": "3.4.2",
+    "@vendure/asset-server-plugin": "^3.4.2",
+    "@vendure/core": "3.4.2",
+    "@vendure/dashboard": "^3.5.1",
+    "@vendure/email-plugin": "3.4.2",
+    "@vendure/graphiql-plugin": "3.4.2",
+    "dotenv": "17.2.2",
+    "pg": "8.16.3",
+    "vendure-razorpay-payment-plugin": "^0.0.14"
+  },
+  "devDependencies": {
+    "@vendure/cli": "3.4.2",
+    "@vendure/ui-devkit": "^3.5.1",
+    "@vitejs/plugin-react": "^5.1.2",
+    "concurrently": "9.2.1",
+    "typescript": "5.8.2"
+  }
+}
