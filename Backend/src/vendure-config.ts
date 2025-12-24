@@ -10,14 +10,15 @@ import { AssetServerPlugin, configureS3AssetStorage } from '@vendure/asset-serve
 import { DefaultAssetNamingStrategy } from '@vendure/core';
 import { fromEnv } from '@aws-sdk/credential-providers';
 import { AdminUiPlugin } from '@vendure/admin-ui-plugin';
+import { compileUiExtensions } from '@vendure/ui-devkit/compiler';
 import { GraphiqlPlugin } from '@vendure/graphiql-plugin';
 import 'dotenv/config';
 import path from 'path';
 import { LanguageCode } from '@vendure/common/lib/generated-types';
 import { RazorpayPlugin } from './plugins/razorpay-payment/razorpay-payment.plugin';
-import { CancellationRequestPlugin } from './plugins/cancellation-request/cancellation-request.plugin';
-import { compileUiExtensions } from '@vendure/ui-devkit/compiler';
-
+import {
+    CancellationRequestPlugin,
+} from './plugins/cancellation-request/cancellation-request.plugin';
 
 const IS_DEV = process.env.APP_ENV === 'dev';
 const serverPort = +process.env.PORT || 3000;
@@ -28,13 +29,12 @@ export const config: VendureConfig = {
         adminApiPath: 'admin-api',
         shopApiPath: 'shop-api',
         trustProxy: IS_DEV ? false : 1,
-        // The following options are useful in development mode,
-        // but are best turned off for production for security
-        // reasons.
-        ...(IS_DEV ? {
-            adminApiDebug: true,
-            shopApiDebug: true,
-        } : {}),
+        ...(IS_DEV
+            ? {
+                  adminApiDebug: true,
+                  shopApiDebug: true,
+              }
+            : {}),
     },
     authOptions: {
         requireVerification: true,
@@ -49,8 +49,6 @@ export const config: VendureConfig = {
     },
     dbConnectionOptions: {
         type: 'postgres',
-        // See the README.md "Migrations" section for an explanation of
-        // the `synchronize` and `migrations` options.
         synchronize: false,
         migrations: [path.join(__dirname, './migrations/*.+(js|ts)')],
         logging: false,
@@ -64,8 +62,6 @@ export const config: VendureConfig = {
     paymentOptions: {
         paymentMethodHandlers: [dummyPaymentHandler],
     },
-    // When adding or altering custom field definitions, the database will
-    // need to be updated. See the "Migrations" section in README.md.
     customFields: {
          Collection: [
            {
@@ -89,7 +85,7 @@ export const config: VendureConfig = {
                 label: [{ languageCode: 'en' as LanguageCode, value: 'Is Product Collection' }],
                 description: [{ languageCode: 'en' as LanguageCode, value: 'Check if this collection contains products. Uncheck if used for content management only.' }],
                 ui: { component: 'boolean-form-input' },
-                defaultValue: true,  // Default to true (is a product collection)
+                defaultValue: true,
             },
         ],
          ProductOptionGroup: [
@@ -102,7 +98,6 @@ export const config: VendureConfig = {
                 ],
             },
         ],
-       
     },
     plugins: [
         GraphiqlPlugin.init(),
@@ -135,28 +130,33 @@ export const config: VendureConfig = {
                 changeEmailAddressUrl: 'http://localhost:8080/verify-email-address-change'
             },
         }),
-      CancellationRequestPlugin.init({
-        earlyCancellationHours: 4, // 4 hours after order placement
-        postDeliveryCancellationDays: 2, // 2 days after delivery
+        CancellationRequestPlugin.init({
+            earlyCancellationHours: 4,
+            postDeliveryCancellationDays: 2,
         }),
-
         AdminUiPlugin.init({
-                route: 'admin',
-                port: serverPort + 2,
-                app: compileUiExtensions({
-                    outputPath: path.join(__dirname, '../admin-ui'),
-                    extensions: [
-                        CancellationRequestPlugin.ui,
-                    ],
-                    devMode: true,
-                }),
-                adminUiConfig: {
-                    apiPort: serverPort,
-                },
-                compatibilityMode: true,
-            }),
+            port: serverPort + 2,
+            route: 'admin',
 
+            app: IS_DEV
+                ? compileUiExtensions({
+                    outputPath: path.join(__dirname, '../admin-ui'),
+                    extensions: [CancellationRequestPlugin.ui],
+                    devMode: true,
+                })
+                : {
+                    path: path.join(__dirname, '../admin-ui/dist/browser'),
+                },
+
+            adminUiConfig: {
+                apiPort: serverPort,
+            },
+
+        compatibilityMode: IS_DEV,
+        }),
+       
+   
         RazorpayPlugin,
-        
     ],
+
 };

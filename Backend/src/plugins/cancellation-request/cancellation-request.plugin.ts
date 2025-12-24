@@ -1,5 +1,6 @@
 import path from 'path';
 import { PluginCommonModule, VendurePlugin } from '@vendure/core';
+import { AdminUiExtension } from '@vendure/ui-devkit/compiler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import gql from 'graphql-tag';
 import { CancellationRequest } from './entities/cancellation-request.entity';
@@ -8,8 +9,8 @@ import { AdminCancellationRequestResolver } from './resolvers/admin.resolver';
 import { ShopCancellationRequestResolver } from './resolvers/shop.resolver';
 
 export interface CancellationRequestPluginOptions {
-  earlyCancellationHours?: number; // Hours after order creation to allow cancellation
-  postDeliveryCancellationDays?: number; // Days after delivery to allow cancellation
+  earlyCancellationHours?: number;
+  postDeliveryCancellationDays?: number;
 }
 
 const adminSchema = gql`
@@ -86,8 +87,6 @@ const shopSchema = gql`
   }
 `;
 
-
-
 @VendurePlugin({
   imports: [PluginCommonModule, TypeOrmModule.forFeature([CancellationRequest])],
   entities: [CancellationRequest],
@@ -100,12 +99,11 @@ const shopSchema = gql`
     schema: shopSchema,
     resolvers: [ShopCancellationRequestResolver],
   },
-  dashboard: './dashboard/index.tsx',
 })
 export class CancellationRequestPlugin {
   static options: CancellationRequestPluginOptions = {
-    earlyCancellationHours: 4, // default 4 hours after order creation
-    postDeliveryCancellationDays: 2, // default 2 days after delivery
+    earlyCancellationHours: 4,
+    postDeliveryCancellationDays: 2,
   };
 
   static init(options: CancellationRequestPluginOptions) {
@@ -113,17 +111,11 @@ export class CancellationRequestPlugin {
     return CancellationRequestPlugin;
   }
 
-  static ui = {
+  // ✅ THIS IS THE CORRECT PROPERTY NAME
+  static ui: AdminUiExtension = {
+    id: 'cancellation-request',
     extensionPath: path.join(__dirname, 'ui'),
-    providers: ['providers.ts'],
     routes: [{ route: 'cancellation-requests', filePath: 'routes.ts' }],
+    providers: ['providers.ts'],
   };
 }
-
-export const uiExtensions = {
-  extensionPath: path.join(__dirname, 'ui'),
-  routes: [
-    { route: 'cancellation-requests', filePath: 'routes.ts' },
-  ],
-  providers: ['providers.ts'],
-};

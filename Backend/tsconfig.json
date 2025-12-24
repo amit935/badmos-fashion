@@ -17,8 +17,6 @@
   "exclude": [
     "node_modules",
     "migration.ts",
-    "src/plugins/**/ui/*",
-    "src/plugins/**/dashboard/*",
     "admin-ui",
     "vite.*.*ts"
   ],

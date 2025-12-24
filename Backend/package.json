@@ -2,15 +2,22 @@
   "name": "badmos-fashion",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev:server": "ts-node ./src/index.ts",
-    "dev:worker": "ts-node ./src/index-worker.ts",
-    "dev": "concurrently npm:dev:*",
-    "build": "tsc",
-    "start:server": "node ./dist/index.js",
-    "start:worker": "node ./dist/index-worker.js",
-    "start": "concurrently npm:start:*"
-  },
+
+"scripts": {
+  "dev:server": "ts-node ./src/index.ts",
+  "dev:worker": "ts-node ./src/index-worker.ts",
+  "dev": "concurrently \"npm:dev:*\"",
+
+  "build": "tsc",
+  "compile:admin-ui": "ts-node ./src/compile-admin-ui.ts",
+
+  "start:server": "NODE_ENV=production node ./dist/index.js",
+  "start:worker": "NODE_ENV=production node ./dist/index-worker.js",
+
+  "prestart": "npm run build && npm run compile:admin-ui",
+  "start": "concurrently \"npm:start:*\""
+},
+
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",
     "@aws-sdk/credential-providers": "^3.888.0",
