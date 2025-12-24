@@ -1,19 +1,4 @@
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   api:
     build: .
     ports:
@@ -23,6 +8,3 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-
-volumes:
-  postgres_data:
