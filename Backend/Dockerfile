@@ -1,9 +1,14 @@
-FROM node:20
+FROM node:20-bookworm-slim
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY package.json ./
-COPY package-lock.json ./
-RUN npm install --production
+COPY package*.json ./
+
+RUN npm ci
+
 COPY . .
-RUN npm run build
+
+EXPOSE 3000
+EXPOSE 4200
+
+CMD ["npm", "run", "dev"]

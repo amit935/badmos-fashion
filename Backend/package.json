@@ -27,6 +27,7 @@
     "vendure-razorpay-payment-plugin": "^0.0.14"
   },
   "devDependencies": {
+    "@angular/cli": "^21.0.4",
     "@vendure/cli": "3.4.2",
     "@vendure/ui-devkit": "^3.5.1",
     "@vitejs/plugin-react": "^5.1.2",

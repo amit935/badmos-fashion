@@ -17,7 +17,6 @@ import { LanguageCode } from '@vendure/common/lib/generated-types';
 import { RazorpayPlugin } from './plugins/razorpay-payment/razorpay-payment.plugin';
 import { CancellationRequestPlugin } from './plugins/cancellation-request/cancellation-request.plugin';
 import { compileUiExtensions } from '@vendure/ui-devkit/compiler';
-import { RequestContext } from '@vendure/core';
 
 
 const IS_DEV = process.env.APP_ENV === 'dev';
@@ -103,13 +102,7 @@ export const config: VendureConfig = {
                 ],
             },
         ],
-        Order: [
-            {
-                name: 'razorpayOrderId',
-                type: 'string',
-                nullable: true,
-            },
-        ],
+       
     },
     plugins: [
         GraphiqlPlugin.init(),
@@ -136,8 +129,6 @@ export const config: VendureConfig = {
             handlers: defaultEmailHandlers,
             templateLoader: new FileBasedTemplateLoader(path.join(__dirname, '../static/email/templates')),
             globalTemplateVars: {
-                // The following variables will change depending on your storefront implementation.
-                // Here we are assuming a storefront running at http://localhost:8080.
                 fromAddress: '"example" <noreply@example.com>',
                 verifyEmailAddressUrl: 'http://localhost:5173/verify',
                 passwordResetUrl: 'http://localhost:8080/password-reset',
