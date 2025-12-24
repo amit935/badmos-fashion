@@ -7,7 +7,6 @@ import {
   Logger,
 } from '@vendure/core';
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
 
 const loggerCtx = 'RazorpayPaymentHandler';
 
