@@ -329,7 +329,7 @@ onBeforeUnmount(() => {
 </div>
 
     
-    <Spinner v-if="isLoading" size="lg" message="Loading..." />
+    <!-- <Spinner v-if="isLoading" size="lg" message="Loading..." /> -->
   </section>
 </template>
 <style scoped>

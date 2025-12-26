@@ -114,28 +114,28 @@ watch(
 </script>
 
 <template>
-      <SectionWrapper :title="title" :caption="caption">
-        <template #content>
-          <div class="products-grid">
-            
-            <Spinner v-if="isLoading" size="lg" message="Loading products..." />
-            
-            <div v-else-if="error">
-              <p class="error">Error: {{ error }}</p>
-            </div>
-            <div v-else-if="!finalProducts || finalProducts.length === 0">
-              <p class="no-products">No products available</p>
-            </div>
-            <div v-else>
-              <ProductCard 
-                v-for="product in finalProducts" 
-                :key="product.id || product.slug"
-                :product="product"
-              />
-            </div>
-          </div>
+  <SectionWrapper :title="title" :caption="caption">
+    <template #content>
+      <div class="products-grid">
+        <template v-if="isLoading">
+            <Spinner size="lg" message="Loading..." />
         </template>
-      </SectionWrapper>
+        <template v-else-if="error">
+          <p class="error">Error: {{ error }}</p>
+        </template>
+        <template v-else-if="!finalProducts || finalProducts.length === 0">
+          <p class="no-products">No products available</p>
+        </template>
+        <template v-else>
+          <ProductCard 
+            v-for="product in finalProducts" 
+            :key="product.id || product.slug"
+            :product="product"
+          />
+        </template>
+      </div>
+    </template>
+  </SectionWrapper>
 </template>
 
 <style scoped>

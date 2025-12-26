@@ -7,7 +7,7 @@ import { useQueryCollection } from '../composables/useQueryCollection.js';
 const { fetchCollection } = useQueryCollection();
 
 const sections = ref([]);
-
+  
 onMounted(async () => {
   try {
     const collectionData = await fetchCollection('home');

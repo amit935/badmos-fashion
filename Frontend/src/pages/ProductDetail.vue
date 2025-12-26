@@ -304,7 +304,7 @@ onMounted(() => {
 
 
 <template>
-  <section class="max-width">
+  <section class="relative max-width">
     <!-- <div v-if="isLoading"></div> -->
     <Spinner v-if="isLoading || productsLoading" size="lg" message="Loading product details..." />
     <div v-else-if="error || productsError" class="text-red-600 text-center">

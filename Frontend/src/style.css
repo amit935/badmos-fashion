@@ -48,14 +48,14 @@
   margin-right: auto !important;
 }
 
-.def-comp {
+/* .def-comp {
   max-width: var(--global-max-width) !important;
   margin-left: auto !important;
   margin-right: auto !important;
   padding-inline: 2.5rem;
   padding-block: 1.5rem;
   height: 100vh;
-}
+} */
 
 .primary-btn {
   background-color: #000;
