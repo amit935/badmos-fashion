@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;10dac0f4e41fec0deea2577b13f516bd5e30e777e5058b62c3179a33e91d5fb1;/home/mitaz/Documents/web-projects/badmos-fashion/BF-WEBSITE/Backend/admin-ui/src/extensions/cancellation-request/components/cancellation-list.component.ts"],
+  "sourcesContent": ["\n      .flex {\n        display: flex;\n      }\n      .gap-2 {\n        gap: 0.5rem;\n      }\n    "],
+  "mappings": "AACM,CAAC,KACC,QAAS,IACX,CACA,CAAC,MACC,IAAK,KACP",
+  "names": []
+}
