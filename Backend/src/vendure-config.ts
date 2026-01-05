@@ -125,8 +125,8 @@ export const config: VendureConfig = {
             templateLoader: new FileBasedTemplateLoader(path.join(__dirname, '../static/email/templates')),
             globalTemplateVars: {
                 fromAddress: '"example" <noreply@example.com>',
-                verifyEmailAddressUrl: 'http://localhost:5173/verify',
-                passwordResetUrl: 'http://localhost:8080/password-reset',
+                verifyEmailAddressUrl: process.env.APP_URL + '/verify',
+                passwordResetUrl: process.env.APP_URL + '/password-reset',
                 changeEmailAddressUrl: 'http://localhost:8080/verify-email-address-change'
             },
         }),
