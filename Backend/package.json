@@ -14,7 +14,6 @@
   "start:server": "NODE_ENV=production node ./dist/index.js",
   "start:worker": "NODE_ENV=production node ./dist/index-worker.js",
 
-  "prestart": "npm run build && npm run compile:admin-ui",
   "start": "concurrently \"npm:start:*\""
 },
 
