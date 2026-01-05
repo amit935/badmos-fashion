@@ -549,3 +549,19 @@ export const ORDER_CANCELLATION_HISTORY = gql`
   }
 }
 `;
+
+// ============================================================================
+// Razorpay / Payment Gateway
+// ============================================================================
+
+export const VERIFY_RAZORPAY_PAYMENT = gql`
+  query VerifyRazorpayOrder($razorpayOrderId: String!) {
+  verifyRazorpayOrder(razorpayOrderId: $razorpayOrderId) {
+    success
+    paid
+    paymentId
+    razorpayOrderId
+    error
+  }
+}
+`

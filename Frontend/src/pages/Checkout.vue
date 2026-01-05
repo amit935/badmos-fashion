@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, watch, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '../composables/useCart'
 import { usePriceFormatter } from '../composables/usePriceFormatter'
@@ -16,21 +16,23 @@ import CheckoutSteps from '../components/checkout/CheckoutSteps.vue'
 import Button from '../components/ui/Button.vue'
 import ErrorWarning from '../components/ui/ErrorWarning.vue'
 
-// Core composables
 const router = useRouter()
 const { isAuthenticated } = useAuthStore()
 const { countries } = useCountries()
-const { openRazorpayCheckout, isProcessing: isPaymentProcessing, paymentError } = useRazorpay()
+const { 
+  openRazorpayCheckout, 
+  paymentError, 
+  clearError
+} = useRazorpay()
 const { formatPrice } = usePriceFormatter()
 const { cartItems, isEmpty } = useCart()
 
-// Checkout composable (single source of truth)
 const checkout = useCheckout()
 
-// Destructure checkout state and methods
 const {
   activeOrder,
   isLoading,
+  cachedOrderForPayment,
   error,
   currentStep,
   couponCode,
@@ -48,52 +50,56 @@ const {
   isBillingFormValid,
   canSaveAndContinue,
   saveAddressToAccount,
+  paymentVerificationError,
+  isPaymentProcessing,
   fetchActiveOrder,
   loadSavedAddresses,
-  refreshSavedAddresses,
   selectSavedAddress,
   useDifferentAddress,
   handleSaveAddress,
   handleApplyCoupon,
   handleRemoveCoupon,
   handleProceedToPayment,
+  isRazorpayPaymentVerifying,
 } = checkout
 
-// Computed properties for validation and UI
-const appliedCoupons = computed(() => activeOrder.value?.couponCodes || [])
+const paymentInitiated = ref(false)
+
+const appliedCoupons = computed(() => {
+  if (currentStep.value === 3 && cachedOrderForPayment.value) {
+    return cachedOrderForPayment.value.couponCodes || []
+  }
+  return activeOrder.value?.couponCodes || []
+})
 
 const hasValidShippingAddress = computed(() => {
-  const addr = activeOrder.value?.shippingAddress
-  return (
-    addr &&
-    addr.fullName?.trim() &&
-    addr.streetLine1?.trim() &&
-    addr.city?.trim() &&
-    addr.postalCode?.trim()
-  )
+  const order = currentStep.value === 3 && cachedOrderForPayment.value 
+    ? cachedOrderForPayment.value 
+    : activeOrder.value
+  
+  if (!order) return false
+  const addr = order.shippingAddress
+  return addr && addr.fullName?.trim() && addr.streetLine1?.trim() && addr.city?.trim() && addr.postalCode?.trim()
 })
 
 const hasValidBillingAddress = computed(() => {
-  const addr = activeOrder.value?.billingAddress
-  return (
-    addr &&
-    addr.fullName?.trim() &&
-    addr.streetLine1?.trim() &&
-    addr.city?.trim() &&
-    addr.postalCode?.trim()
-  )
+  const order = currentStep.value === 3 && cachedOrderForPayment.value 
+    ? cachedOrderForPayment.value 
+    : activeOrder.value
+  
+  if (!order) return false
+  const addr = order.billingAddress
+  return addr && addr.fullName?.trim() && addr.streetLine1?.trim() && addr.city?.trim() && addr.postalCode?.trim()
 })
 
-const canProceedToOrderSummary = computed(() => 
-  hasValidShippingAddress.value && hasValidBillingAddress.value
-)
+const canProceedToOrderSummary = computed(() => hasValidShippingAddress.value && hasValidBillingAddress.value)
 
-// Check if user is using a different/new address (not a saved one)
-const isUsingDifferentAddress = computed(() => {
-  return showShippingForm.value && !selectedSavedAddress.value
+const isUsingDifferentAddress = computed(() => showShippingForm.value && !selectedSavedAddress.value)
+
+const shouldShowEmptyCart = computed(() => {
+  return isEmpty.value && !paymentError.value && !cachedOrderForPayment.value
 })
 
-// UI synchronization
 watch(useSameForBilling, (newVal) => {
   if (newVal) {
     billingAddress.value = { ...shippingAddress.value }
@@ -106,11 +112,8 @@ watch(shippingAddress, (newVal) => {
   }
 }, { deep: true })
 
-// Auto-select existing address on mount or order change
 const autoSelectExistingAddress = () => {
-  if (!activeOrder.value?.shippingAddress || !savedAddresses.value.length) {
-    return
-  }
+  if (!activeOrder.value?.shippingAddress || !savedAddresses.value.length) return
 
   const orderShippingAddr = activeOrder.value.shippingAddress
   const matchedAddress = savedAddresses.value.find(addr =>
@@ -138,20 +141,25 @@ const autoSelectExistingAddress = () => {
   }
 }
 
-// Payment handler
 const handleProceedToPaymentWrapper = async () => {
-  const orderCode = activeOrder.value?.code
-  await handleProceedToPayment(openRazorpayCheckout, {
-    onSuccess: async () => {
-      router.push({ name: 'order-success', query: { orderId: orderCode } })
-    },
-    onFailure: (error) => {
-      console.error('Payment failed:', error)
-    }
-  })
+  console.log("Starting payment flow...")
+  await handleProceedToPayment(openRazorpayCheckout)
 }
 
-// Lifecycle
+watch(currentStep, async (newStep) => {
+  if (newStep === 3 && !paymentInitiated.value) {
+    paymentInitiated.value = true
+    console.log("Step 3 reached, initiating payment...")
+    await handleProceedToPaymentWrapper()
+  }
+}, { immediate: false })
+
+watch(() => currentStep.value, (newStep, oldStep) => {
+  if (oldStep === 3 && newStep !== 3) {
+    paymentInitiated.value = false
+  }
+})
+
 onMounted(async () => {
   await fetchActiveOrder()
   await loadSavedAddresses()
@@ -164,42 +172,41 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-width px-4 md:px-24 py-12">
-    <h1 class="text-6xl text-center secondary-font font-bold mb-8 uppercase">Checkout</h1>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+    <h1 class="text-5xl md:text-6xl text-center secondary-font font-bold mb-8 uppercase tracking-wider">Checkout</h1>
 
-    <!-- Loading state -->
+    <!-- Loading spinner -->
     <div v-if="isLoading && !activeOrder" class="flex justify-center items-center h-64">
-      <div class="spinner"></div>
-      <span class="ml-4">Loading checkout...</span>
+      <Spinner size="lg" />
+      <span class="ml-4 text-lg font-medium text-gray-700">Loading checkout...</span>
     </div>
 
     <!-- Empty cart -->
-    <div v-else-if="isEmpty" class="text-center py-12">
-      <p class="text-gray-600 mb-4">Your cart is empty</p>
+    <div v-else-if="shouldShowEmptyCart" class="text-center py-12 space-y-4">
+      <p class="text-xl text-gray-600">Your cart is empty</p>
       <Button
         @click="router.push({ name: 'root' })"
-        contentClasses="px-6 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+        content-classes="px-8 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
         text="Continue Shopping"
       />
     </div>
 
-    <!-- Main checkout flow -->
+    <!-- Main checkout section -->
     <div v-else>
       <CheckoutSteps
-        :steps="['Shipping Details', 'Order Summary']"
+        :steps="['Shipping Details', 'Order Summary', 'Payment']"
         :current="currentStep"
-        @step-change="step => { 
-          if (step === 1 || (step === 2 && canProceedToOrderSummary)) {
+        @step-change="(step) => { 
+          if (step === 1 || (step === 2 && canProceedToOrderSummary) || step === 3) {
             currentStep = step 
           }
         }"
       />
 
-      <!-- Step 1: Shipping Details -->
+      <!-- Step 1: Shipping Address -->
       <section v-show="currentStep === 1" class="space-y-6">
-        <!-- Saved Addresses -->
-        <div v-if="isAuthenticated && hasSavedAddresses" class="bg-white p-6 rounded-lg border-2 border-black">
-          <h2 class="text-xl font-semibold mb-4">Saved Addresses</h2>
+        <div v-if="isAuthenticated && hasSavedAddresses" class="bg-white p-6 rounded-xl border-2 border-black shadow-lg">
+          <h2 class="text-2xl font-semibold mb-6 uppercase tracking-wide">Saved Addresses</h2>
           <div class="space-y-3">
             <SavedAddressCard
               v-for="address in savedAddresses"
@@ -209,143 +216,131 @@ onMounted(async () => {
               @select="selectSavedAddress"
             />
           </div>
-          <button @click="useDifferentAddress" class="mt-4 text-sm text-gray-600 hover:underline">
+          <button @click="useDifferentAddress" class="mt-6 text-sm font-medium text-gray-600 hover:text-black hover:underline transition-colors">
             + Use a different address
           </button>
         </div>
 
-        <!-- Shipping Form -->
-        <div v-if="showShippingForm" class="bg-white p-6 rounded-lg border-2 border-black">
-          <h2 class="text-xl font-semibold mb-4">Shipping Address</h2>
+        <div v-if="showShippingForm" class="bg-white p-6 rounded-xl border-2 border-black shadow-lg">
+          <h2 class="text-2xl font-semibold mb-6 uppercase tracking-wide">Shipping Address</h2>
           <AddressForm 
             v-model="shippingAddress"
             :countries="countries"
-            :showCountry="false"
-            :showStates="true"
+            :show-country="false"
+            :show-states="true"
           />
         </div>
 
-        <!-- Same as billing checkbox -->
-        <div class="bg-white p-6 rounded-lg border-2 border-black">
-          <label class="flex items-center cursor-pointer select-none">
+        <div class="bg-white p-6 rounded-xl border-2 border-black shadow-lg">
+          <label class="flex items-center cursor-pointer select-none group">
             <input
               v-model="useSameForBilling"
               type="checkbox"
-              class="w-5 h-5 mr-2 rounded border border-black bg-white appearance-none checked:bg-black checked:border-black relative"
+              class="w-6 h-6 mr-3 rounded border-2 border-black bg-white appearance-none checked:bg-black checked:border-black relative transition-all duration-200 group-hover:border-gray-800"
             />
-            <span class="text-sm font-medium">Use shipping address for billing</span>
+            <span class="text-lg font-medium text-gray-900">Use shipping address for billing</span>
           </label>
         </div>
 
-        <!-- Billing Form -->
-        <div v-if="!useSameForBilling" class="bg-white p-6 rounded-lg border-2 border-black">
-          <h2 class="text-xl font-semibold mb-4">Billing Address</h2>
+        <div v-if="!useSameForBilling" class="bg-white p-6 rounded-xl border-2 border-black shadow-lg">
+          <h2 class="text-2xl font-semibold mb-6 uppercase tracking-wide">Billing Address</h2>
           <AddressForm 
             v-model="billingAddress"
             :countries="countries"
-            :showCountry="true"
-            :showStates="true"
+            :show-country="true"
+            :show-states="true"
           />
         </div>
 
-        <!-- Save to account checkbox (only show if using different/new address) -->
-        <div v-if="isUsingDifferentAddress && isAuthenticated" class="bg-white p-6 rounded-lg border-2 border-black">
-          <label class="flex items-center cursor-pointer select-none">
+        <div v-if="isUsingDifferentAddress && isAuthenticated" class="bg-white p-6 rounded-xl border-2 border-black shadow-lg">
+          <label class="flex items-center cursor-pointer select-none group">
             <input
               v-model="saveAddressToAccount"
               type="checkbox"
-              class="w-5 h-5 mr-2 rounded border border-black bg-white appearance-none checked:bg-black checked:border-black relative"
+              class="w-6 h-6 mr-3 rounded border-2 border-black bg-white appearance-none checked:bg-black checked:border-black relative transition-all duration-200 group-hover:border-gray-800"
             />
-            <span class="text-sm font-medium">Save this address for future orders</span>
+            <span class="text-lg font-medium text-gray-900">Save this address for future orders</span>
           </label>
         </div>
 
-        <!-- Continue button -->
         <Button
           @click="handleSaveAddress"
           :disabled="isSavingAddress || !canSaveAndContinue"
-          contentClasses="w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-          :text="isSavingAddress ? 'Saving...' : 'Continue to Order Summary'"
+          content-classes="w-full py-4 text-lg font-bold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          text="Continue to Order Summary"
+          :loading="isSavingAddress"
         />
 
-        <!-- Form validation message -->
-        <p v-if="!canSaveAndContinue && showShippingForm" class="text-xs text-gray-500 text-center mt-2">
+        <p v-if="!canSaveAndContinue && showShippingForm" class="text-sm text-gray-500 text-center mt-4 font-medium">
           Please fill all required fields to continue
         </p>
 
-        <!-- General error -->
-        <ErrorWarning v-if="error" class="mt-4" type="error" :message="error" />
+        <ErrorWarning v-if="error" class="mt-6" type="error" :message="error" />
       </section>
 
       <!-- Step 2: Order Summary -->
       <section v-show="currentStep === 2" class="space-y-6">
         <OrderSummary 
-          :cartItems="cartItems"
-          :formatPrice="formatPrice"
-          :activeOrder="activeOrder"
+          :cart-items="cartItems"
+          :format-price="formatPrice"
+          :active-order="activeOrder"
         />
 
         <CouponCode
-          :appliedCoupons="appliedCoupons"
+          :applied-coupons="appliedCoupons"
           @apply="handleApplyCoupon"
           @remove="handleRemoveCoupon"
         >
           <template #error>
-            <ErrorWarning v-if="couponError" class="mt-4" type="warning" :message="couponError" />
+            <ErrorWarning v-if="couponError" class="mt-6" type="warning" :message="couponError" />
           </template>
         </CouponCode>
-
-        <!-- Action buttons -->
-        <div class="flex gap-4">
+        
+        <div class="flex flex-col sm:flex-row gap-4">
           <Button
-            @click="() => { currentStep = 1 }"
-            contentClasses="flex-1 uppercase"
+            @click="currentStep = 1"
+            content-classes="flex-1 py-4 text-lg font-bold uppercase tracking-wide"
             category="secondary"
           >
             Back to Shipping
           </Button>
           <Button
-            @click="handleProceedToPaymentWrapper"
+            @click="currentStep = 3"
             :disabled="!hasValidShippingAddress || !hasValidBillingAddress || isPaymentProcessing"
-            contentClasses="flex-1 uppercase"
+            content-classes="flex-1 py-4 text-lg font-bold uppercase tracking-wide shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             :loading="isPaymentProcessing"
           >
             {{ isPaymentProcessing ? 'Processing...' : 'Proceed to Payment' }}
           </Button>
         </div>
+      </section>
 
-        <ErrorWarning v-if="paymentError" class="mt-2" :message="paymentError" />
+      <!-- Step 3: Payment Processing & Verification -->
+      <section v-show="currentStep === 3" class="space-y-6">
+        <div v-if="isPaymentProcessing" class="flex flex-col items-center justify-center space-y-4">
+          <Spinner size="lg" message="Opening Razorpay..."/>
+        </div>
+
+        <div v-if="isRazorpayPaymentVerifying" class="flex flex-col items-center justify-center space-y-4">
+          <Spinner size="lg" message="Verifying your payment..."/>
+          <p class="text-sm text-gray-500">This may take a few moments. Please don't close this page.</p>
+        </div>
+
+        <ErrorWarning 
+          v-else-if="paymentError" 
+          class="mt-4" 
+          type="error" 
+          :message="paymentError"
+          @close="clearError"
+        />
+
+        <ErrorWarning 
+          v-else-if="paymentVerificationError" 
+          class="mt-4" 
+          type="error" 
+          :message="paymentVerificationError"
+        />
       </section>
     </div>
   </div>
 </template>
-
-<style scoped>
-.spinner {
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 3px solid #e5e7eb;
-  border-top-color: #000;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-input[type="checkbox"]:checked::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 50%;
-  translate: -50%;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-</style>

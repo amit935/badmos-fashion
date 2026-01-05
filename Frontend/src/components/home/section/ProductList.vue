@@ -117,9 +117,7 @@ watch(
   <SectionWrapper :title="title" :caption="caption">
     <template #content>
       <div class="products-grid">
-        <template v-if="isLoading">
-            <Spinner size="lg" message="Loading..." />
-        </template>
+        <Spinner v-if="isLoading" size="lg" message="Loading..." />
         <template v-else-if="error">
           <p class="error">Error: {{ error }}</p>
         </template>

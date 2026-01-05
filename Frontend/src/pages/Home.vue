@@ -74,12 +74,12 @@ onMounted(async () => {
 
 <template>
   <div>
-    <!-- Render sections dynamically -->
     <component
       v-for="section in sections"
       :key="section.id"
       :is="section.component"
       v-bind="section.props"
+      class="mt-8 mb-8"
     />
   </div>
 </template>

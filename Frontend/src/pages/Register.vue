@@ -214,7 +214,7 @@ const handleSubmit = async () => {
                 :warningMessage="confirmPasswordErrorMessage"
                 @input="onConfirmPasswordInput" />
             
-            <Button category="primary" type="submit" :text="t('auth.register.buttonText')" contentClasses="uppercase w-full" />
+            <Button category="primary" type="submit" :loading="isLoading" :text="t('auth.register.buttonText')" contentClasses="uppercase w-full" />
         </template>
         <template #formFooter>
             <p>
@@ -222,6 +222,15 @@ const handleSubmit = async () => {
                 <RouterLink :to="{ name: 'login' }" class="underline font-bold">
                 {{ t('auth.register.redirectLinkText') }}
                 </RouterLink>
+            </p>
+             <p class="text-center">
+            {{ t('auth.ackTermsAndConditions.title', { mode: 'registering' }) }}
+            <RouterLink
+                :to="{ name: 'multipurpose-detail', params: { multiPurposeSlug: 'terms-and-conditions' } }"
+                class="underline font-bold"
+            >
+                Terms & Conditions
+            </RouterLink>
             </p>
         </template>
     </AuthLayout>

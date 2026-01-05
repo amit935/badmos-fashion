@@ -285,6 +285,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="hero-carousel" ref="carouselContainer"  @touchstart.passive="handleTouchStart"
     @touchend.passive="handleTouchEnd">
+    <Spinner v-if="isLoading" size="lg" message="Loading..." />
     <img
       v-for="(image, index) in currentImages"
       :key="`hero-image-${index}`"
@@ -327,9 +328,6 @@ onBeforeUnmount(() => {
 >
   
 </div>
-
-    
-    <!-- <Spinner v-if="isLoading" size="lg" message="Loading..." /> -->
   </section>
 </template>
 <style scoped>

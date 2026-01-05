@@ -107,7 +107,7 @@ const handleSubmit = async () => {
                 </RouterLink>
             </p>
 
-            <Button category="primary" type="submit" :text="t('auth.login.buttonText')" contentClasses="uppercase w-full" />
+            <Button category="primary" type="submit" :loading="isLoading" :text="t('auth.login.buttonText')" contentClasses="uppercase w-full" />
         </template>
         <template #formFooter>
             <p>
@@ -115,7 +115,18 @@ const handleSubmit = async () => {
                 <RouterLink :to="{ name: 'register' }" class="underline font-bold">
                 {{ t('auth.login.redirectLinkText') }}
                 </RouterLink>
+                
             </p>
+         <p class="text-center">
+            {{ t('auth.ackTermsAndConditions.title', { mode: 'logging in' }) }}
+            <RouterLink
+                :to="{ name: 'multipurpose-detail', params: { multiPurposeSlug: 'terms-and-conditions' } }"
+                class="underline font-bold"
+            >
+                Terms & Conditions
+            </RouterLink>
+            </p>
+
         </template>
     </AuthLayout>
 </template>

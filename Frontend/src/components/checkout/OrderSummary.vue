@@ -24,6 +24,8 @@ const totalPromotionDiscounts = computed(() => {
   ) || 0
 })
 
+
+
 // Calculate total taxes (excluding shipping taxes for checkout)
 const totalTaxes = computed(() => {
   if (!props.activeOrder?.taxSummary) return 0
@@ -113,8 +115,8 @@ const shippingGST = computed(() => {
           <span>{{ formatPrice(totalTaxes) }}</span>
         </div>
         <div
-          v-for="tax in activeOrder.taxSummary"
-          :key="tax.description"
+          v-for="tax in activeOrder?.taxSummary"
+          :key="tax?.description"
           class="flex justify-between text-sm text-gray-600 pl-4"
         >
           <span>{{ tax.description }} ({{ tax.taxRate }}%):</span>

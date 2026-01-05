@@ -61,10 +61,10 @@ onMounted(() => {
     </div>
 
     <div class="mt-6">
-      <div v-if="isLoadingOrders">Loading...</div>
+      <Spinner v-if="isLoadingOrders" size="lg" message="Loading your orders..." />
       <div v-else-if="ordersError">Error: {{ ordersError }}</div>
 
-      <div v-else>
+<div v-else>
   <div
     v-if="orders.length > 0"
     v-for="order in orders"

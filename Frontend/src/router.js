@@ -213,8 +213,9 @@ async function validateMultipurpose(slug) {
  */
 async function waitForAuthReady() {
   const authStore = useAuthStore()
-  
+  await authStore.initAuth()
   if (!authStore.isAuthReady) {
+    console.log('Waiting for auth store to be ready...')
     return new Promise(resolve => {
       const stop = watch(() => authStore.isAuthReady, val => {
         if (val) {
@@ -231,10 +232,8 @@ async function waitForAuthReady() {
  */
 async function checkAuth(to, next) {
   const authStore = useAuthStore()
-  
   await waitForAuthReady()
-  
-  if (!authStore.isAuthenticated) {
+  if (!authStore.canAccessProtected()) {
     next({ name: 'login', query: { redirect: to.fullPath } })
     return false
   }

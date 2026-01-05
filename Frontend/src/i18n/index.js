@@ -48,6 +48,9 @@ const messages = {
             }
           }
         },
+        ackTermsAndConditions: {
+          title: `By {mode} to this website, you are consisdered to be agreeing to our`
+        },
         resetPassword: {
         title: `Forgot Password?`,
         caption: `Enter your email and we'll send you a reset link.`,

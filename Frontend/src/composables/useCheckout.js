@@ -1,11 +1,8 @@
-// composables/useCheckout.js
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   activeOrder,
   isLoadingOrder,
   orderError,
-  updateOrder,
-  clearOrder,
   fetchActiveOrder,
   applyCoupon,
   removeCoupon,
@@ -16,15 +13,20 @@ import {
   setShippingMethod,
   addPaymentToOrder,
   transitionOrderToState,
-  settlePayment,
   saveCustomerAddress,
 } from '../store/orderStore'
+
+import { useRazorpay } from './useRazorpay'
+import { useRouter } from 'vue-router'
 
 export function useCheckout() {
   // STATE - Pinia proxies (reactive)
   const isLoading = isLoadingOrder
   const error = orderError
   const order = activeOrder
+
+  const { verifyRazorpayPayment, isPaymentVerifying } = useRazorpay()
+  const router = useRouter()
 
   // Local UI state
   const currentStep = ref(1)
@@ -33,6 +35,7 @@ export function useCheckout() {
   const isSavingAddress = ref(false)
   const previousAddressCount = ref(0)
   const saveAddressToAccount = ref(true)
+  const paymentVerificationError = ref('')
 
   // Address state
   const savedAddresses = ref([])
@@ -40,6 +43,12 @@ export function useCheckout() {
   const selectedSavedAddress = ref(null)
   const useSameForBilling = ref(true)
 
+  // Payment state
+  const isPaymentProcessing = ref(false)
+  const isRazorpayPaymentVerifying = computed(() => isPaymentVerifying.value)
+  const cachedOrderForPayment = ref(null) // ✅ Moved here for better organization
+
+  // Form state
   const shippingAddress = ref({
     fullName: '',
     streetLine1: '',
@@ -87,19 +96,20 @@ export function useCheckout() {
       addr.city?.trim() &&
       addr.province?.trim() &&
       addr.postalCode?.trim() &&
-      addr.phoneNumber?.trim() &&
-      addr.countryCode?.trim()
+      addr.phoneNumber?.trim()
     )
   })
 
   const canSaveAndContinue = computed(() => {
     if (showShippingForm.value) return isShippingFormValid.value && isBillingFormValid.value
-    return selectedSavedAddress.value ? true : false
+    return !!selectedSavedAddress.value
   })
 
   const addressSavedSuccessfully = computed(() => 
     savedAddresses.value.length > previousAddressCount.value
   )
+
+  // ✅ REMOVED: clearUnsettledOrder() - not used anywhere
 
   // METHODS
   const loadSavedAddresses = async (forceRefresh = false) => {
@@ -146,16 +156,16 @@ export function useCheckout() {
 
   const useDifferentAddress = () => {
     selectedSavedAddress.value = null
+    const phone = shippingAddress.value.phoneNumber
     shippingAddress.value = {
-      ...shippingAddress.value,
-      fullName: shippingAddress.value.fullName || '',
+      fullName: '',
       streetLine1: '',
       streetLine2: '',
       city: '',
       province: '',
       postalCode: '',
       countryCode: 'IN',
-      phoneNumber: shippingAddress.value.phoneNumber || ''
+      phoneNumber: phone || ''
     }
     if (useSameForBilling.value) {
       billingAddress.value = { ...shippingAddress.value }
@@ -164,58 +174,50 @@ export function useCheckout() {
 
   const handleSaveAddress = async () => {
     if (!canSaveAndContinue.value) {
-      error.value = 'Please fill all required fields'
+      orderError.value = 'Please fill all required fields'
       return false
     }
 
     isSavingAddress.value = true
-    error.value = null
+    orderError.value = null
 
     try {
-      // Step 0: Save to customer account ONLY if using new/different address
-      if (saveAddressToAccount.value && showShippingForm.value && !selectedSavedAddress.value) {
+      if (saveAddressToAccount.value && showShippingForm.value) {
         const saveResult = await saveCustomerAddress({ ...shippingAddress.value })
         if (!saveResult.success) {
           console.warn('Address not saved to account:', saveResult.error)
         }
       }
 
-      // Step 1: Set shipping address (for current order)
       const shippingResult = await setShippingAddress({ ...shippingAddress.value })
       if (!shippingResult?.success) {
-        error.value = shippingResult?.error || 'Failed to save shipping address'
+        orderError.value = shippingResult?.error || 'Failed to save shipping address'
         return false
       }
 
-      // Step 2: Get shipping methods
       const methodsResult = await fetchEligibleShippingMethods()
       eligibleShippingMethods.value = methodsResult?.methods || []
 
-      // Step 3: Auto-select first shipping method
       if (eligibleShippingMethods.value.length > 0) {
         await setShippingMethod(eligibleShippingMethods.value[0].id)
       }
 
-      // Step 4: Set billing address
       const billingInput = useSameForBilling.value 
         ? { ...shippingAddress.value } 
         : { ...billingAddress.value }
       
       const billingResult = await setBillingAddress(billingInput)
       if (!billingResult?.success) {
-        error.value = billingResult?.error || 'Failed to save billing address'
+        orderError.value = billingResult?.error || 'Failed to save billing address'
         return false
       }
 
-      // Step 5: Refresh saved addresses
       await refreshSavedAddresses()
-
-      // Step 6: Proceed
       currentStep.value = 2
       return true
 
     } catch (err) {
-      error.value = err.message || 'Failed to save addresses'
+      orderError.value = err.message || 'Failed to save addresses'
       return false
     } finally {
       isSavingAddress.value = false
@@ -236,40 +238,60 @@ export function useCheckout() {
     return true
   }
 
-  const handleRemoveCoupon = async (code) => {
-    await removeCoupon(code)
-    couponCode.value = ''
-    couponError.value = ''
+  const handleRemoveCoupon = async () => {
+    if (!couponCode.value) return
+    const result = await removeCoupon(couponCode.value)
+    if (result?.success) {
+      couponCode.value = ''
+      couponError.value = ''
+    }
   }
 
-  const handleProceedToPayment = async (openRazorpayCheckout, paymentCallbacks = {}) => {
+  const handleProceedToPayment = async (openRazorpayCheckout) => {
+    isPaymentProcessing.value = true
+
     if (!order.value?.shippingAddress || !order.value?.billingAddress) {
-      error.value = 'Please complete shipping and billing details'
+      orderError.value = 'Please complete shipping and billing details'
+      isPaymentProcessing.value = false
       return false
     }
 
     try {
-      // Refresh order first
       await fetchActiveOrder()
       
-      const currentState = order.value.state
+      let currentState = order.value.state
       if (currentState !== 'ArrangingPayment') {
+        // ✅ Cache order BEFORE state changes
+        cachedOrderForPayment.value = {
+          id: order.value.id,
+          code: order.value.code,
+          totalWithTax: order.value.totalWithTax,
+          currencyCode: order.value.currencyCode,
+          shippingAddress: { ...order.value.shippingAddress },
+          billingAddress: { ...order.value.billingAddress },
+          customer: { ...order.value.customer },
+        }
+
         const transitionResult = await transitionOrderToState('ArrangingPayment')
         if (!transitionResult?.success) {
-          error.value = 'Failed to prepare order for payment'
+          orderError.value = 'Failed to prepare order for payment'
+          cachedOrderForPayment.value = null
+          isPaymentProcessing.value = false
           return false
         }
         await fetchActiveOrder()
       }
 
-      // Add payment
       const paymentResult = await addPaymentToOrder({
         method: 'razorpay-payment',
-        metadata: {}
+        // ✅ FIXED: Use order.value.id directly instead of undefined unsettledOrder
+        metadata: { orderId: order.value.id }
       })
 
       if (!paymentResult?.success) {
-        error.value = paymentResult?.error || 'Failed to create payment'
+        orderError.value = paymentResult?.error || 'Failed to create payment'
+        cachedOrderForPayment.value = null
+        isPaymentProcessing.value = false
         return false
       }
 
@@ -277,36 +299,92 @@ export function useCheckout() {
       const razorpayOrderId = payment?.metadata?.public?.razorpayOrderId
       
       if (!razorpayOrderId) {
-        error.value = 'Failed to create Razorpay order'
+        orderError.value = 'Failed to create Razorpay order'
+        cachedOrderForPayment.value = null
+        isPaymentProcessing.value = false
         return false
       }
 
-      // Open Razorpay
       openRazorpayCheckout({
         razorpayOrderId,
-        amount: order.value.totalWithTax,
+        amount: Math.round(order.value.totalWithTax * 100),
         currency: order.value.currencyCode,
         customer: {
           fullName: order.value.shippingAddress?.fullName || '',
           emailAddress: order.value.customer?.emailAddress || '',
           phoneNumber: order.value.shippingAddress?.phoneNumber || '',
         },
-        onSuccess: paymentCallbacks?.onSuccess,
-        onFailure: paymentCallbacks?.onFailure,
+        onSuccess: async (razorpayResponse) => {
+          isPaymentProcessing.value = false
+          console.log("RAZORPAY SUCCESS:", razorpayResponse)
+          
+          const verificationResult = await verifyRazorpayPayment(razorpayOrderId)
+          console.log("Verification result:", verificationResult)
+          
+          if (verificationResult.success && verificationResult.paid) {
+            const orderCode = cachedOrderForPayment.value?.code || order.value?.code
+            cachedOrderForPayment.value = null
+          
+             router.push({ 
+              name: 'order-success',
+              query: { orderId: orderCode }
+            })
+
+            return true
+          } else if (verificationResult.success && !verificationResult.paid) {
+            paymentVerificationError.value = verificationResult.message || 'Payment verification pending'
+            return false
+          } else {
+            paymentVerificationError.value = verificationResult.error || 'Payment verification failed'
+            return false
+          }
+        },
+        
+        onFailure: async (razorpayError) => {
+          isPaymentProcessing.value = false
+          console.log("RAZORPAY FAILURE:", razorpayError)
+          
+          // ✅ Try verification even on failure (sometimes payment succeeds despite error)
+          const verificationResult = await verifyRazorpayPayment(razorpayOrderId)
+
+          if (verificationResult.success && verificationResult.paid) {
+            const orderCode = cachedOrderForPayment.value?.code || order.value?.code
+            cachedOrderForPayment.value = null
+            
+         
+             router.push({ 
+              name: 'order-success',
+              query: { orderId: orderCode }
+            })
+
+            return false
+          } else if (verificationResult.success && !verificationResult.paid) {
+            paymentVerificationError.value = verificationResult.message || 'Payment verification pending'
+            return false
+          } else {
+            // ✅ Show Razorpay error or verification error
+            paymentVerificationError.value = (typeof razorpayError === 'string' 
+              ? razorpayError 
+              : razorpayError?.message) || verificationResult.error || 'Payment failed'
+            return false
+          }
+        }
       })
 
       return true
     } catch (err) {
-      error.value = err.message || 'Payment initiation failed'
+      console.error("PAYMENT ERROR:", err)
+      orderError.value = err.message || 'Payment initiation failed'
+      cachedOrderForPayment.value = null
+      isPaymentProcessing.value = false
       return false
     }
   }
 
   return {
-    // State
     activeOrder: order,
     isLoading,
-    error,
+    error: orderError,
     currentStep,
     couponCode,
     couponError,
@@ -324,8 +402,11 @@ export function useCheckout() {
     canSaveAndContinue,
     addressSavedSuccessfully,
     saveAddressToAccount,
+    isPaymentProcessing,
+    paymentVerificationError,
+    cachedOrderForPayment,
+    isRazorpayPaymentVerifying,
 
-    // Methods
     fetchActiveOrder,
     loadSavedAddresses,
     refreshSavedAddresses,

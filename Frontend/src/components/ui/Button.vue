@@ -22,6 +22,10 @@ const props = defineProps({
   disabled: {
     type: Boolean,
     default: false
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -73,6 +77,10 @@ function onClick(event) {
   aria-disabled="props.disabled"
 >
 
-    <slot>{{ text }}</slot>
+    <slot v-if="!props.loading">{{ text }}</slot>
+    <span v-else class="flex items-center justify-center">
+      <span class="material-symbols-outlined animate-spin mr-2 text-lg">progress_activity</span>
+      Loading...
+    </span>
   </button>
 </template>
