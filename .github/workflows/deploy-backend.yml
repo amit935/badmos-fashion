@@ -38,7 +38,7 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        source: "Backend/dist/,Backend/admin-ui/,Backend/package.json,Backend/package-lock.json,Backend/docker-compose.prod.yml,Backend/Dockerfile"
+        source: "Backend/dist/,Backend/admin-ui/,Backend/package.json,Backend/package-lock.json,Backend/docker-compose.prod.yml,Backend/Dockerfile,Backend/static"
         target: "/home/badmos.store/badmos-fashion/"
         strip_components: 0
         
