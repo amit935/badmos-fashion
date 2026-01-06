@@ -8,7 +8,7 @@
   "dev:worker": "ts-node ./src/index-worker.ts",
   "dev": "concurrently \"npm:dev:*\"",
 
-  "build": "tsc",
+  "build": "npm run compile:admin-ui && tsc",
   "compile:admin-ui": "ts-node ./src/compile-admin-ui.ts",
 
   "start:server": "NODE_ENV=production node ./dist/index.js",
