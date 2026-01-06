@@ -72,14 +72,15 @@ onMounted(async () => {
     <!-- About Section -->
     <div class="max-width about-section mx-auto px-5 border-t border-b border-gray-200 py-10 text-center">
       <h3 class="text-lg font-bold mb-4 uppercase">{{ about?.name }}</h3>
-      <p class="about-text text-gray-600 mx-auto leading-relaxed" v-html="about?.description">
+      <p class="rich-text text-gray-600 mx-auto leading-relaxed" v-html="about?.description">
       </p>
     </div>
 
     <!-- Copyright Section -->
     <div class="max-width text-center py-5">
-      <p class="text-gray-500 text-sm" v-html="copyright?.description"></p>
+      <p class="rich-text text-gray-500 text-sm" v-html="copyright?.description"></p>
     </div>
   </footer>
 </template>
+
 

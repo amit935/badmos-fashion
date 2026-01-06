@@ -33,7 +33,7 @@ onMounted(() => {
     </div>
 </template>
 
-<style scoped>
+<!-- <style scoped>
 .rich-text :deep(p) {
   margin: 0 0 1rem 0;
   line-height: 1.625;
@@ -52,4 +52,4 @@ onMounted(() => {
 .rich-text :deep(br) {
   line-height: 1.625;
 }
-</style>
+</style> -->
