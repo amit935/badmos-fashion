@@ -42,6 +42,42 @@ jobs:
         target: "/home/badmos.store/badmos-fashion/"
         strip_components: 0
         
+    - name: Create production environment file
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /home/badmos.store/badmos-fashion/Backend
+          cat > .env.prod << 'EOF'
+          APP_ENV=${{ secrets.PROD_APP_ENV }}
+          PORT=${{ secrets.PROD_PORT }}
+          CORS_ORIGINS=${{ secrets.PROD_CORS_ORIGINS }}
+          REQUIRE_VERIFICATION=${{ secrets.PROD_REQUIRE_VERIFICATION }}
+          SUPERADMIN_USERNAME=${{ secrets.PROD_SUPERADMIN_USERNAME }}
+          SUPERADMIN_PASSWORD=${{ secrets.PROD_SUPERADMIN_PASSWORD }}
+          COOKIE_SECRET=${{ secrets.PROD_COOKIE_SECRET }}
+          DB_HOST=${{ secrets.PROD_DB_HOST }}
+          DB_PORT=${{ secrets.PROD_DB_PORT }}
+          DB_NAME=${{ secrets.PROD_DB_NAME }}
+          DB_SCHEMA=${{ secrets.PROD_DB_SCHEMA }}
+          DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
+          DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+          DB_SSL=${{ secrets.PROD_DB_SSL }}
+          DB_LOGGING=${{ secrets.PROD_DB_LOGGING }}
+          AWS_ACCESS_KEY_ID=${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION=${{ secrets.PROD_AWS_REGION }}
+          S3_BUCKET=${{ secrets.PROD_S3_BUCKET }}
+          FRONTEND_URL=${{ secrets.PROD_FRONTEND_URL }}
+          ASSET_URL_PREFIX=${{ secrets.PROD_ASSET_URL_PREFIX }}
+          EMAIL_FROM=${{ secrets.PROD_EMAIL_FROM }}
+          EARLY_CANCELLATION_HOURS=${{ secrets.PROD_EARLY_CANCELLATION_HOURS }}
+          POST_DELIVERY_CANCELLATION_DAYS=${{ secrets.PROD_POST_DELIVERY_CANCELLATION_DAYS }}
+          EOF
+          chmod 600 .env.prod
+        
     - name: Restart Backend Services
       uses: appleboy/ssh-action@master
       with:
