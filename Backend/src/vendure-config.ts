@@ -146,7 +146,7 @@ export const config: VendureConfig = {
             earlyCancellationHours: +(process.env.EARLY_CANCELLATION_HOURS || 4),
             postDeliveryCancellationDays: +(process.env.POST_DELIVERY_CANCELLATION_DAYS || 2),
         }),
-        AdminUiPlugin.init({
+     AdminUiPlugin.init({
             port: serverPort + 2,
             route: 'admin',
 
@@ -161,11 +161,13 @@ export const config: VendureConfig = {
                 },
 
             adminUiConfig: {
-                apiPort: serverPort,
+                apiHost: IS_DEV ? undefined : 'auto',
+                apiPort: IS_DEV ? serverPort : 'auto',
             },
 
             compatibilityMode: IS_DEV,
         }),
+
        
         RazorpayPlugin,
     ],
