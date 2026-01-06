@@ -1,0 +1,44 @@
+name: Deploy Frontend to EC2
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: Frontend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd Frontend
+        npm ci
+        
+    - name: Build Frontend
+      run: |
+        cd Frontend
+        npm run build
+        
+    - name: Deploy to EC2
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "Frontend/dist/*"
+        target: "/home/badmos.store/public_html/"
+        strip_components: 2
+        rm: true
