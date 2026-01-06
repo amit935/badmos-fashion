@@ -141,7 +141,20 @@ export const config: VendureConfig = {
                 verifyEmailAddressUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify`,
                 passwordResetUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/password-reset`,
             },
+            transport: IS_DEV ? undefined : {
+                type: 'smtp',
+                host: process.env.EMAIL_SMTP_HOST || 'email-smtp.ap-south-1.amazonaws.com',
+                port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
+                secure: process.env.EMAIL_SMTP_SECURE === 'true',
+                auth: {
+                    user: process.env.EMAIL_SMTP_USER,
+                    pass: process.env.EMAIL_SMTP_PASSWORD,
+                },
+                logging: !IS_DEV,
+                debug: !IS_DEV,
+            },
         } as any),
+
         CancellationRequestPlugin.init({
             earlyCancellationHours: +(process.env.EARLY_CANCELLATION_HOURS || 4),
             postDeliveryCancellationDays: +(process.env.POST_DELIVERY_CANCELLATION_DAYS || 2),
