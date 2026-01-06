@@ -20,14 +20,22 @@ import {
     CancellationRequestPlugin,
 } from './plugins/cancellation-request/cancellation-request.plugin';
 
+
+
 const IS_DEV = process.env.APP_ENV === 'dev';
 const serverPort = +process.env.PORT || 3000;
+
+
 
 export const config: VendureConfig = {
     apiOptions: {
         port: serverPort,
         adminApiPath: 'admin-api',
         shopApiPath: 'shop-api',
+        cors: { 
+            origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173'],
+            credentials: true,
+        },
         trustProxy: IS_DEV ? false : 1,
         ...(IS_DEV
             ? {
@@ -37,7 +45,7 @@ export const config: VendureConfig = {
             : {}),
     },
     authOptions: {
-        requireVerification: true,
+        requireVerification: process.env.REQUIRE_VERIFICATION === 'true',
         tokenMethod: ['bearer', 'cookie'],
         superadminCredentials: {
             identifier: process.env.SUPERADMIN_USERNAME,
@@ -51,13 +59,18 @@ export const config: VendureConfig = {
         type: 'postgres',
         synchronize: false,
         migrations: [path.join(__dirname, './migrations/*.+(js|ts)')],
-        logging: false,
+        logging: process.env.DB_LOGGING === 'true',
         database: process.env.DB_NAME,
-        schema: process.env.DB_SCHEMA,
+        schema: process.env.DB_SCHEMA || 'public',
         host: process.env.DB_HOST,
-        port: +process.env.DB_PORT,
+        port: +process.env.DB_PORT || 5432,
         username: process.env.DB_USERNAME,
         password: process.env.DB_PASSWORD,
+        ssl: process.env.DB_SSL === 'true' 
+            ? {
+                rejectUnauthorized: false
+              }
+            : false,
     },
     paymentOptions: {
         paymentMethodHandlers: [dummyPaymentHandler],
@@ -106,33 +119,32 @@ export const config: VendureConfig = {
             assetUploadDir: path.join(__dirname, 'assets'),
             namingStrategy: new DefaultAssetNamingStrategy(),
             storageStrategyFactory: configureS3AssetStorage({
-                bucket: 'bf-assets-8adm05',
+                bucket: (process.env.S3_BUCKET || 'bf-assets-8adm05') as string,
                 credentials: fromEnv(),
                 nativeS3Configuration: {
-                    region: process.env.AWS_REGION,
+                    region: (process.env.AWS_REGION || 'us-east-1') as string,
                 },
             }),
-            assetUrlPrefix: `https://bf-assets-8adm05.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/`,
+            assetUrlPrefix: process.env.ASSET_URL_PREFIX || `https://bf-assets-8adm05.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/`,
         }),
         DefaultSchedulerPlugin.init(),
         DefaultJobQueuePlugin.init({ useDatabaseForBuffer: true }),
         DefaultSearchPlugin.init({ bufferUpdates: false, indexStockStatus: true }),
         EmailPlugin.init({
-            devMode: true,
+            devMode: IS_DEV,
             outputPath: path.join(__dirname, '../static/email/test-emails'),
             route: 'mailbox',
             handlers: defaultEmailHandlers,
             templateLoader: new FileBasedTemplateLoader(path.join(__dirname, '../static/email/templates')),
             globalTemplateVars: {
-                fromAddress: '"example" <noreply@example.com>',
-                verifyEmailAddressUrl: process.env.APP_URL + '/verify',
-                passwordResetUrl: process.env.APP_URL + '/password-reset',
-                changeEmailAddressUrl: 'http://localhost:8080/verify-email-address-change'
+                fromAddress: `"${process.env.NOREPLY_EMAIL_TITLE}" <${process.env.NOREPLY_EMAIL}>`,
+                verifyEmailAddressUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify`,
+                passwordResetUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/password-reset`,
             },
-        }),
+        } as any),
         CancellationRequestPlugin.init({
-            earlyCancellationHours: 4,
-            postDeliveryCancellationDays: 2,
+            earlyCancellationHours: +(process.env.EARLY_CANCELLATION_HOURS || 4),
+            postDeliveryCancellationDays: +(process.env.POST_DELIVERY_CANCELLATION_DAYS || 2),
         }),
         AdminUiPlugin.init({
             port: serverPort + 2,
@@ -152,11 +164,9 @@ export const config: VendureConfig = {
                 apiPort: serverPort,
             },
 
-        compatibilityMode: IS_DEV,
+            compatibilityMode: IS_DEV,
         }),
        
-   
         RazorpayPlugin,
     ],
-
 };
