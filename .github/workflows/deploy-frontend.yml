@@ -26,6 +26,12 @@ jobs:
       run: |
         cd Frontend
         npm ci
+    
+    - name: Create .env.production file
+      run: |
+        cd Frontend
+        echo "VITE_API_URL=${{ secrets.VUE_APP_API_URL }}" >> .env.production
+        echo "VITE_RAZORPAY_PUBLIC_KEY_ID=${{ secrets.VUE_APP_RAZORPAY_KEY }}" >> .env.production
         
     - name: Build Frontend
       run: |
@@ -42,3 +48,4 @@ jobs:
         target: "/home/badmos.store/public_html/"
         strip_components: 2
         rm: true
+
