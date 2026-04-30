@@ -19,7 +19,8 @@ import { RazorpayPlugin } from './plugins/razorpay-payment/razorpay-payment.plug
 import {
     CancellationRequestPlugin,
 } from './plugins/cancellation-request/cancellation-request.plugin';
-
+import { OtpAuthPlugin } from './plugins/otp-auth/otp-auth.plugin';
+import { otpEmailHandler } from './plugins/otp-auth/email-handler';
 
 
 const IS_DEV = process.env.APP_ENV === 'dev';
@@ -134,7 +135,10 @@ export const config: VendureConfig = {
             devMode: IS_DEV,
             outputPath: path.join(__dirname, '../static/email/test-emails'),
             route: 'mailbox',
-            handlers: defaultEmailHandlers,
+            handlers: [
+                defaultEmailHandlers,
+                otpEmailHandler,
+            ],
             templateLoader: new FileBasedTemplateLoader(path.join(__dirname, '../static/email/templates')),
             globalTemplateVars: {
                 fromAddress: `"${process.env.NOREPLY_EMAIL_TITLE}" <${process.env.NOREPLY_EMAIL}>`,
@@ -183,5 +187,6 @@ export const config: VendureConfig = {
 
        
         RazorpayPlugin,
+        OtpAuthPlugin,
     ],
 };
